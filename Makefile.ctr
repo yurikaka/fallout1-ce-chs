@@ -77,12 +77,18 @@ CFLAGS	+=	$(INCLUDE) -D__3DS__ -DSDL_MAIN_HANDLED
 CFLAGS	+=	-Ofast -funroll-loops -fno-math-errno -ffast-math -flto=auto
 #CFLAGS	+=	-D_DEBUG -D_DEBUG_OVERLAY -D_DEBUG_LINK
 
+# Simplified Chinese (CHS) support (see src/game/chs_config.h). When BUILD_CHS
+# is enabled, the FreeType glyph renderer (src/game/freetype_manager.cc) is
+# compiled in and needs the devkitPro "3ds-freetype" portlib for its headers
+# (install with: dkp-pacman -S 3ds-freetype). iconv is provided by newlib.
+CFLAGS	+=	-I$(PORTLIBS)/include/freetype2
+
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:=  -lSDL2 -lcitro2d -lcitro3d -lctru -lm -lz
+LIBS	:=  -lSDL2 -lcitro2d -lcitro3d -lctru -lfreetype -lpng -lbz2 -lm -lz
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing

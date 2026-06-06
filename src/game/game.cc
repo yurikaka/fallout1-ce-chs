@@ -14,7 +14,9 @@
 #include "game/display.h"
 #include "game/editor.h"
 #include "game/endgame.h"
+#include "game/chs_config.h"
 #include "game/fontmgr.h"
+#include "game/freetype_manager.h"
 #include "game/gconfig.h"
 #include "game/gdialog.h"
 #include "game/gmemory.h"
@@ -188,6 +190,11 @@ int game_init(const char* windowTitle, bool isMapper, int font, int flags, int a
     if (!game_in_mapper) {
         game_splash_screen();
     }
+
+#if BUILD_CHS
+    FtFontsInit();
+    text_add_manager(&gFtFontManager);
+#endif
 
     FMInit();
     text_add_manager(&alias_mgr);
@@ -424,6 +431,9 @@ void game_exit()
     automap_exit();
     palette_exit();
     FMExit();
+#if BUILD_CHS
+    FtFontsExit();
+#endif
     windowClose();
     db_exit();
 #ifdef __3DS__

@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "game/actions.h"
+#include "game/chs_config.h"
 #include "game/combat.h"
 #include "game/combatai.h"
 #include "game/critter.h"
@@ -2624,6 +2625,89 @@ static int text_to_rect_func(unsigned char* buffer, Rect* rect, char* string, in
     }
 
     int maxWidth = rect->lrx - rect->ulx;
+#if BUILD_CHS
+    // In the original code, we look for a space ' ' between words,
+    // and we cut the string by replacing the space with EOL,
+    // and then replace it back after print the current row.
+    // But in Chinese, there's no space and we can cut between any character,
+    // but we cannot replace the next character with EOL since it's not space,
+    // unless we store the original character, so we copy the cut part into a
+    // temp string, when there's a valid temp string, we can bypass width check
+    char temp[CHS_DIALOG_LINE_BUFFER_SIZE];
+    temp[0] = '\0';
+    char* end = NULL;
+    while (start != NULL && *start != '\0') {
+        if (temp[0] == '\0' && text_width(start) > maxWidth) {
+            end = start + 2;
+            int x = maxWidth / CHS_DIALOG_AVG_CHAR_WIDTH;
+            while (*end != '\0' && end - start < (start == string ? x - 2 : x)) {
+                end++;
+                end++;
+            }
+
+            if (*end != '\0') {
+                strncpy(temp, start, end - start);
+                temp[end - start] = '\0';
+            } else {
+                // should not reach here for Chinese, since we can cut at any position
+                // there should always be a valid(not EOL) end position
+                if (rect->lry - text_height() < rect->uly) {
+                    return rect->uly;
+                }
+
+                if (a7 != 1 || start == string) {
+                    text_to_buf(buffer + pitch * rect->uly + 10, start, maxWidth, pitch, color);
+                } else {
+                    text_to_buf(buffer + pitch * rect->uly, start, maxWidth, pitch, color);
+                }
+
+                if (a4 != NULL) {
+                    *a4 += strlen(start) + 1;
+                }
+
+                rect->uly += height;
+                return rect->uly;
+            }
+        }
+
+        if (temp[0] == '\0' && text_width(start) > maxWidth) {
+            debug_printf("\nError: display_msg: word too long!");
+            break;
+        }
+
+        if (a7 != 0) {
+            if (rect->lry - text_height() < rect->uly) {
+                if (end != NULL && *end == '\0') {
+                    *end = ' ';
+                }
+                return rect->uly;
+            }
+
+            unsigned char* dest;
+            if (a7 != 1 || start == string) {
+                dest = buffer + 10;
+            } else {
+                dest = buffer;
+            }
+            text_to_buf(dest + pitch * rect->uly, (temp[0] == '\0' ? start : temp), maxWidth, pitch, color);
+            temp[0] = '\0';
+        }
+
+        if (a4 != NULL && end != NULL) {
+            *a4 += strlen(start) + 1;
+        }
+
+        rect->uly += height;
+
+        if (end != NULL) {
+            // no space or EOL to skip in Chinese
+            start = end;
+            end = NULL;
+        } else {
+            start = NULL;
+        }
+    }
+#else
     char* end = NULL;
     while (start != NULL && *start != '\0') {
         if (text_width(start) > maxWidth) {
@@ -2715,6 +2799,7 @@ static int text_to_rect_func(unsigned char* buffer, Rect* rect, char* string, in
             start = NULL;
         }
     }
+#endif
 
     if (a4 != NULL) {
         *a4 = 0;

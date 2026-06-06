@@ -76,8 +76,11 @@ target_sources(${EXECUTABLE_NAME} PUBLIC
     "src/game/elevator.h"
     "src/game/endgame.cc"
     "src/game/endgame.h"
+    "src/game/chs_config.h"
     "src/game/fontmgr.cc"
     "src/game/fontmgr.h"
+    "src/game/freetype_manager.cc"
+    "src/game/freetype_manager.h"
     "src/game/game_vars.h"
     "src/game/game.cc"
     "src/game/game.h"
@@ -356,6 +359,17 @@ endif()
 add_subdirectory("third_party/fpattern")
 target_link_libraries(${EXECUTABLE_NAME} ${FPATTERN_LIBRARY})
 target_include_directories(${EXECUTABLE_NAME} PRIVATE ${FPATTERN_INCLUDE_DIR})
+
+# Simplified Chinese (CHS) support needs FreeType (glyph rendering) and iconv
+# (encoding conversion). Desktop builds fetch them from source here; the 3DS
+# build (Makefile.ctr) links the devkitPro portlibs instead.
+add_subdirectory("third_party/freetype")
+target_link_libraries(${EXECUTABLE_NAME} ${FREETYPE_LIBRARIES})
+target_include_directories(${EXECUTABLE_NAME} PRIVATE ${FREETYPE_INCLUDE_DIRS})
+
+add_subdirectory("third_party/iconv")
+target_link_libraries(${EXECUTABLE_NAME} ${ICONV_LIBRARIES})
+target_include_directories(${EXECUTABLE_NAME} PRIVATE ${ICONV_INCLUDE_DIRS})
 
 target_link_libraries(${EXECUTABLE_NAME} ${SDL2_LIBRARIES})
 target_include_directories(${EXECUTABLE_NAME} PRIVATE ${SDL2_INCLUDE_DIRS})

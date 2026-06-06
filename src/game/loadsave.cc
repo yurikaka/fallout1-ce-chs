@@ -9,6 +9,7 @@
 
 #include "game/automap.h"
 #include "game/bmpdlog.h"
+#include "game/chs_config.h"
 #include "game/combat.h"
 #include "game/combatai.h"
 #include "game/critter.h"
@@ -1945,7 +1946,11 @@ static void ShowSlotList(int a1)
         snprintf(str, sizeof(str), "[   %s %.2d:   ]", text, index + 1);
         text_to_buf(lsgbuf + LS_WINDOW_WIDTH * y + 55, str, LS_WINDOW_WIDTH, LS_WINDOW_WIDTH, color);
 
+#if BUILD_CHS
+        y += CHS_SLOT_HEADER_HEIGHT;
+#else
         y += text_height();
+#endif
         switch (LSstatus[index]) {
         case SLOT_STATE_OCCUPIED:
             strcpy(str, LSData[index].description);
@@ -1970,7 +1975,11 @@ static void ShowSlotList(int a1)
         }
 
         text_to_buf(lsgbuf + LS_WINDOW_WIDTH * y + 55, str, LS_WINDOW_WIDTH, LS_WINDOW_WIDTH, color);
+#if BUILD_CHS
+        y += CHS_SLOT_ENTRY_HEIGHT;
+#else
         y += 2 * text_height() + 4;
+#endif
     }
 }
 
