@@ -223,7 +223,6 @@ int xfileReadChar(XFile* stream)
 
 // 0x4DF280
 
-
 // 0x4DF320
 int xfileWriteChar(int ch, XFile* stream)
 {

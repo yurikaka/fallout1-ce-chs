@@ -1,14 +1,14 @@
 #include "fontmgr.h"
 #include "plib/gnw/text.h"
 
+#include <cstdint>
 #include <stdio.h>
 #include <string.h>
-#include <cstdint>
 
-//#include "color.h"
+// #include "color.h"
 #include "plib/color/color.h"
-//#include "db.h"
-//#include "plib/db/db.h"
+// #include "db.h"
+// #include "plib/db/db.h"
 #include "xfile.h"
 // #include "memory_manager.h"
 #include "int/memdbg.h"
@@ -22,9 +22,9 @@
 
 #include "wordwrap.h"
 
-#include <map> 
 #include "iconv.h"
-//#include "settings.h"
+#include <map>
+// #include "settings.h"
 
 // The maximum number of interface fonts.
 #define FT_FONT_MAX (16)
@@ -125,7 +125,7 @@ static int LtoU(const char* input, size_t charInPutLen)
         size_t output_size = 1024;
         iconv_t cd = iconv_open("UCS-4-INTERNAL", current->encoding);
         char* tmp = (char*)(output + 1);
-        const char* tmp2 = (const char *)(input + 1);
+        const char* tmp2 = (const char*)(input + 1);
         charInPutLen -= 1;
         iconv(cd, &tmp2, &charInPutLen, &tmp, &output_size);
         iconv_close(cd);
@@ -227,7 +227,7 @@ void FtFontsExit()
             myfree(gFtFontDescriptors[font].filebuffer, __FILE__, __LINE__); // FONTMGR.C, 124
         }
     }
-    //TODO: clean up
+    // TODO: clean up
 }
 
 // 0x441D20
@@ -274,8 +274,8 @@ static int FtFontLoad(int font_index)
         return -1;
     }
     strcpy(desc->encoding, encoding);
-    
-    char *fontFileName = NULL;
+
+    char* fontFileName = NULL;
     if (!config_get_string(&config, string, "fileName", &fontFileName)) {
         return -1;
     }
@@ -287,7 +287,7 @@ static int FtFontLoad(int font_index)
         return -1;
     }
 
-    int fileSize = xfileGetSize(stream); //19647736
+    int fileSize = xfileGetSize(stream); // 19647736
 
     desc->filebuffer = (unsigned char*)mymalloc(fileSize, __FILE__, __LINE__); // FONTMGR.C, 259
 
@@ -425,7 +425,7 @@ static int FtFontGetMonospacedCharacterWidthImpl()
 
     return current->lineSpacing + current->maxHeight;
 }
-                                                                                                                                                
+
 // 0x4422B4
 static void FtFontDrawImpl(unsigned char* buf, const char* string, int length, int pitch, int color)
 {
@@ -530,8 +530,7 @@ static int FtFonteWordWrapImpl(const char* string, int width, short* breakpoints
     int uint32Index;
     int CharIndex = 0;
 
-    for (int i = 0; i < count;) 
-    {
+    for (int i = 0; i < count;) {
         const uint32_t ch = output[i];
 
         if (ch == L'\n' || ch == L'\r') {

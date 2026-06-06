@@ -236,7 +236,6 @@ void display_print(char* str)
             }
             disp_str[disp_start][DISPLAY_MONITOR_LINE_LENGTH - 1] = '\0';
             disp_start = (disp_start + 1) % max_ptr;
-      
 
             if (next == NULL) {
                 text_font(oldFont);

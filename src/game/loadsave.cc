@@ -1946,7 +1946,7 @@ static void ShowSlotList(int a1)
         }
 
         text_to_buf(lsgbuf + LS_WINDOW_WIDTH * y + 55, str, LS_WINDOW_WIDTH, LS_WINDOW_WIDTH, color);
-        //y += 2 * text_height() + 4;
+        // y += 2 * text_height() + 4;
         y += 24;
     }
 }
