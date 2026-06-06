@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <cstdint>
 
 //#include "color.h"
 #include "plib/color/color.h"
