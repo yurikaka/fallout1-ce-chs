@@ -29,6 +29,35 @@
 // The maximum number of interface fonts.
 #define FT_FONT_MAX (16)
 
+// Interface fonts are addressed by callers starting at this base (font 0 is
+// requested as font 100), matching the bitmap font manager's numbering.
+#define FT_FONT_NUM_BASE (100)
+
+// Capacity, in UCS-4 code points, of the shared encoding-conversion buffer.
+#define FT_CONV_BUFFER_SIZE (1024)
+
+// Font files are streamed from disk in chunks of this many bytes.
+#define FT_FILE_READ_CHUNK (10000)
+
+// Each colour blend-table entry is indexed as
+// (intensity << FT_INTENSITY_SHIFT) | pixel.
+#define FT_INTENSITY_SHIFT (8)
+
+// Code points strictly between these bounds are rendered as fixed-width,
+// word-spaced characters.
+#define FT_EXTENDED_ASCII_MIN (128)
+#define FT_EXTENDED_ASCII_MAX (256)
+
+// Per-font rendering tunables. Compile-time constants — adjust here and rebuild.
+// Divisor mapping FreeType's 0..255 coverage onto the colour blend table's
+// intensity levels.
+#define FT_GRAYSCALE_DIVISOR (26)
+// Extra horizontal spacing, in pixels, reserved for the bullet glyph (0x95).
+#define FT_BULLET_SPACING (2)
+
+// Directory holding the font pack and its font.ini descriptor.
+#define FT_FONT_DIR "fonts/chs"
+
 namespace fallout {
 
 typedef struct FtFontGlyph {
@@ -92,8 +121,8 @@ static unsigned char knobDump[35] = {
 
 // 0x518688
 FontMgr gFtFontManager = {
-    100,
-    110,
+    FT_FONT_NUM_BASE,
+    FT_FONT_NUM_BASE,
     FtFontSetCurrentImpl,
     FtFontDrawImpl,
     FtFontGetLineHeightImpl,
@@ -115,14 +144,14 @@ static int gCurrentFtFont;
 // 0x58E93C
 static FtFontDescriptor* current;
 
-static uint32_t output[1024] = {
+static uint32_t output[FT_CONV_BUFFER_SIZE] = {
     0x0,
 };
 
 static int LtoU(const char* input, size_t charInPutLen)
 {
     if (input[0] == '\x95') {
-        size_t output_size = 1024;
+        size_t output_size = FT_CONV_BUFFER_SIZE;
         iconv_t cd = iconv_open("UCS-4-INTERNAL", current->encoding);
         char* tmp = (char*)(output + 1);
         const char* tmp2 = (const char*)(input + 1);
@@ -131,27 +160,27 @@ static int LtoU(const char* input, size_t charInPutLen)
         iconv_close(cd);
 
         output[0] = '\x95';
-        return (1024 - output_size) / 4 + 1;
+        return (FT_CONV_BUFFER_SIZE - output_size) / sizeof(uint32_t) + 1;
     } else {
-        size_t output_size = 1024;
+        size_t output_size = FT_CONV_BUFFER_SIZE;
         iconv_t cd = iconv_open("UCS-4-INTERNAL", current->encoding);
         char* tmp = (char*)output;
         iconv(cd, &input, &charInPutLen, &tmp, &output_size);
         iconv_close(cd);
 
-        return (1024 - output_size) / 4;
+        return (FT_CONV_BUFFER_SIZE - output_size) / sizeof(uint32_t);
     }
 }
 
 static int UtoL(const char* input, size_t charInPutLen)
 {
-    size_t output_size = 1024;
+    size_t output_size = FT_CONV_BUFFER_SIZE;
     iconv_t cd = iconv_open(current->encoding, "UCS-4-INTERNAL");
     char* tmp = (char*)output;
     iconv(cd, &input, &charInPutLen, &tmp, &output_size);
     iconv_close(cd);
 
-    return (1024 - output_size);
+    return (FT_CONV_BUFFER_SIZE - output_size);
 }
 
 static FtFontGlyph GetFtFontGlyph(uint32_t unicode)
@@ -204,7 +233,7 @@ int FtFontsInit()
                 currentFont = font;
             }
 
-            gFtFontManager.high_font_num = gFtFontsLength + 100;
+            gFtFontManager.high_font_num = gFtFontsLength + FT_FONT_NUM_BASE;
         }
     }
 
@@ -214,7 +243,7 @@ int FtFontsInit()
 
     gFtFontsInitialized = true;
 
-    FtFontSetCurrentImpl(currentFont + 100);
+    FtFontSetCurrentImpl(currentFont + FT_FONT_NUM_BASE);
 
     return 0;
 }
@@ -241,7 +270,7 @@ static int FtFontLoad(int font_index)
         return -1;
     }
 
-    sprintf(string, "fonts/chs/font.ini");
+    sprintf(string, "%s/font.ini", FT_FONT_DIR);
     if (!config_load(&config, string, false)) {
         return -1;
     }
@@ -280,7 +309,7 @@ static int FtFontLoad(int font_index)
         return -1;
     }
 
-    sprintf(string, "fonts/chs/%s", fontFileName);
+    sprintf(string, "%s/%s", FT_FONT_DIR, fontFileName);
 
     XFile* stream = xfileOpen(string, "rb");
     if (stream == NULL) {
@@ -294,13 +323,13 @@ static int FtFontLoad(int font_index)
     int readleft = fileSize;
     unsigned char* ptr = desc->filebuffer;
 
-    while (readleft > 10000) {
-        int readsize = xfileRead(ptr, 1, 10000, stream);
-        if (readsize != 10000) {
+    while (readleft > FT_FILE_READ_CHUNK) {
+        int readsize = xfileRead(ptr, 1, FT_FILE_READ_CHUNK, stream);
+        if (readsize != FT_FILE_READ_CHUNK) {
             return -1;
         }
-        readleft -= 10000;
-        ptr += 10000;
+        readleft -= FT_FILE_READ_CHUNK;
+        ptr += FT_FILE_READ_CHUNK;
     }
 
     if (xfileRead(ptr, 1, readleft, stream) != readleft) {
@@ -325,12 +354,20 @@ static void FtFontSetCurrentImpl(int font)
         return;
     }
 
-    font -= 100;
+    font -= FT_FONT_NUM_BASE;
 
     if (gFtFontDescriptors[font].filebuffer != NULL) {
         gCurrentFtFont = font;
         current = &(gFtFontDescriptors[font]);
     }
+}
+
+// Total vertical advance between two lines: the glyph cell height plus the
+// configured inter-line spacing and height offset. Centralised so every metric
+// that needs a line height stays consistent.
+static int FtFontLineHeight(const FtFontDescriptor* desc)
+{
+    return desc->lineSpacing + desc->maxHeight + desc->heightOffset;
 }
 
 // 0x442168
@@ -340,7 +377,7 @@ static int FtFontGetLineHeightImpl()
         return 0;
     }
 
-    return current->lineSpacing + current->maxHeight + current->heightOffset;
+    return FtFontLineHeight(current);
 }
 
 // 0x442188
@@ -367,8 +404,8 @@ static int FtFontGetStringWidthImpl(const char* string)
 
             if (ch == '\x95') {
                 FtFontGlyph g = GetFtFontGlyph(ch);
-                width += g.width + current->letterSpacing + 2;
-            } else if (ch == L' ' || (ch < 256 && ch > 128)) {
+                width += g.width + current->letterSpacing + FT_BULLET_SPACING;
+            } else if (ch == L' ' || (ch < FT_EXTENDED_ASCII_MAX && ch > FT_EXTENDED_ASCII_MIN)) {
                 width += current->wordSpacing + current->letterSpacing;
             } else {
                 FtFontGlyph g = GetFtFontGlyph(ch);
@@ -413,7 +450,7 @@ static int FtFontGetBufferSizeImpl(const char* str)
         return 0;
     }
 
-    return FtFontGetStringWidthImpl(str) * (current->lineSpacing + current->maxHeight + current->heightOffset);
+    return FtFontGetStringWidthImpl(str) * FtFontLineHeight(current);
 }
 
 // 0x442278
@@ -466,7 +503,7 @@ static void FtFontDrawImpl(unsigned char* buf, const char* string, int length, i
         } else if (ch == L' ') {
             characterWidth = current->wordSpacing;
         } else if (ch == '\x95') {
-            characterWidth = g.width + 2;
+            characterWidth = g.width + FT_BULLET_SPACING;
         } else {
             characterWidth = g.width;
         }
@@ -483,9 +520,9 @@ static void FtFontDrawImpl(unsigned char* buf, const char* string, int length, i
         for (int y = 0; y < g.rows && y < current->maxHeight; y++) {
             for (int x = 0; x < g.width; x++) {
                 unsigned char byte = *glyphDataPtr++;
-                byte /= 26;
+                byte /= FT_GRAYSCALE_DIVISOR;
 
-                *ptr++ = palette[(byte << 8) + *ptr];
+                *ptr++ = palette[(byte << FT_INTENSITY_SHIFT) + *ptr];
             }
 
             ptr += pitch - g.width;
@@ -541,12 +578,12 @@ static int FtFonteWordWrapImpl(const char* string, int width, short* breakpoints
 
         PreCharIndex = CharIndex;
 
-        if (ch == L' ' || (ch > 128 && ch < 256)) {
+        if (ch == L' ' || (ch > FT_EXTENDED_ASCII_MIN && ch < FT_EXTENDED_ASCII_MAX)) {
             accum += current->letterSpacing + current->wordSpacing;
             CharIndex += 1;
         } else {
             if (ch == '\x95')
-                accum += current->letterSpacing + g.width + 2;
+                accum += current->letterSpacing + g.width + FT_BULLET_SPACING;
             else
                 accum += current->letterSpacing + g.width;
 
