@@ -1,3 +1,7 @@
+#include "game/chs_config.h"
+
+#if BUILD_CHS
+
 #include "fontmgr.h"
 #include "plib/gnw/text.h"
 
@@ -25,38 +29,6 @@
 #include "iconv.h"
 #include <map>
 // #include "settings.h"
-
-// The maximum number of interface fonts.
-#define FT_FONT_MAX (16)
-
-// Interface fonts are addressed by callers starting at this base (font 0 is
-// requested as font 100), matching the bitmap font manager's numbering.
-#define FT_FONT_NUM_BASE (100)
-
-// Capacity, in UCS-4 code points, of the shared encoding-conversion buffer.
-#define FT_CONV_BUFFER_SIZE (1024)
-
-// Font files are streamed from disk in chunks of this many bytes.
-#define FT_FILE_READ_CHUNK (10000)
-
-// Each colour blend-table entry is indexed as
-// (intensity << FT_INTENSITY_SHIFT) | pixel.
-#define FT_INTENSITY_SHIFT (8)
-
-// Code points strictly between these bounds are rendered as fixed-width,
-// word-spaced characters.
-#define FT_EXTENDED_ASCII_MIN (128)
-#define FT_EXTENDED_ASCII_MAX (256)
-
-// Per-font rendering tunables. Compile-time constants — adjust here and rebuild.
-// Divisor mapping FreeType's 0..255 coverage onto the colour blend table's
-// intensity levels.
-#define FT_GRAYSCALE_DIVISOR (26)
-// Extra horizontal spacing, in pixels, reserved for the bullet glyph (0x95).
-#define FT_BULLET_SPACING (2)
-
-// Directory holding the font pack and its font.ini descriptor.
-#define FT_FONT_DIR "fonts/chs"
 
 namespace fallout {
 
@@ -636,3 +608,5 @@ static int FtFonteWordWrapImpl(const char* string, int width, short* breakpoints
 }
 
 } // namespace fallout
+
+#endif // BUILD_CHS

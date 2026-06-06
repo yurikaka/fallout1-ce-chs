@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "game/actions.h"
+#include "game/chs_config.h"
 #include "game/combat.h"
 #include "game/combatai.h"
 #include "game/critter.h"
@@ -2567,6 +2568,7 @@ static int text_to_rect_func(unsigned char* buffer, Rect* rect, char* string, in
     }
 
     int maxWidth = rect->lrx - rect->ulx;
+#if BUILD_CHS
     // In the original code, we look for a space ' ' between words,
     // and we cut the string by replacing the space with EOL,
     // and then replace it back after print the current row.
@@ -2574,13 +2576,13 @@ static int text_to_rect_func(unsigned char* buffer, Rect* rect, char* string, in
     // but we cannot replace the next character with EOL since it's not space,
     // unless we store the original character, so we copy the cut part into a
     // temp string, when there's a valid temp string, we can bypass width check
-    char temp[1000];
+    char temp[CHS_DIALOG_LINE_BUFFER_SIZE];
     temp[0] = '\0';
     char* end = NULL;
     while (start != NULL && *start != '\0') {
         if (temp[0] == '\0' && text_width(start) > maxWidth) {
             end = start + 2;
-            int x = maxWidth / 6;
+            int x = maxWidth / CHS_DIALOG_AVG_CHAR_WIDTH;
             while (*end != '\0' && end - start < (start == string ? x - 2 : x)) {
                 end++;
                 end++;
@@ -2648,6 +2650,99 @@ static int text_to_rect_func(unsigned char* buffer, Rect* rect, char* string, in
             start = NULL;
         }
     }
+#else
+    char* end = NULL;
+    while (start != NULL && *start != '\0') {
+        if (text_width(start) > maxWidth) {
+            end = start + 1;
+            while (*end != '\0' && *end != ' ') {
+                end++;
+            }
+
+            if (*end != '\0') {
+                char* lookahead = end + 1;
+                while (lookahead != NULL) {
+                    while (*lookahead != '\0' && *lookahead != ' ') {
+                        lookahead++;
+                    }
+
+                    if (*lookahead == '\0') {
+                        lookahead = NULL;
+                    } else {
+                        *lookahead = '\0';
+                        if (text_width(start) >= maxWidth) {
+                            *lookahead = ' ';
+                            lookahead = NULL;
+                        } else {
+                            end = lookahead;
+                            *lookahead = ' ';
+                            lookahead++;
+                        }
+                    }
+                }
+
+                if (*end == ' ') {
+                    *end = '\0';
+                }
+            } else {
+                if (rect->lry - text_height() < rect->uly) {
+                    return rect->uly;
+                }
+
+                if (a7 != 1 || start == string) {
+                    text_to_buf(buffer + pitch * rect->uly + 10, start, maxWidth, pitch, color);
+                } else {
+                    text_to_buf(buffer + pitch * rect->uly, start, maxWidth, pitch, color);
+                }
+
+                if (a4 != NULL) {
+                    *a4 += strlen(start) + 1;
+                }
+
+                rect->uly += height;
+                return rect->uly;
+            }
+        }
+
+        if (text_width(start) > maxWidth) {
+            debug_printf("\nError: display_msg: word too long!");
+            break;
+        }
+
+        if (a7 != 0) {
+            if (rect->lry - text_height() < rect->uly) {
+                if (end != NULL && *end == '\0') {
+                    *end = ' ';
+                }
+                return rect->uly;
+            }
+
+            unsigned char* dest;
+            if (a7 != 1 || start == string) {
+                dest = buffer + 10;
+            } else {
+                dest = buffer;
+            }
+            text_to_buf(dest + pitch * rect->uly, start, maxWidth, pitch, color);
+        }
+
+        if (a4 != NULL && end != NULL) {
+            *a4 += strlen(start) + 1;
+        }
+
+        rect->uly += height;
+
+        if (end != NULL) {
+            start = end + 1;
+            if (*end == '\0') {
+                *end = ' ';
+            }
+            end = NULL;
+        } else {
+            start = NULL;
+        }
+    }
+#endif
 
     if (a4 != NULL) {
         *a4 = 0;

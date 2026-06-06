@@ -7,6 +7,7 @@
 #include "game/anim.h"
 #include "game/automap.h"
 #include "game/bmpdlog.h"
+#include "game/chs_config.h"
 #include "game/combat.h"
 #include "game/combatai.h"
 #include "game/critter.h"
@@ -187,8 +188,10 @@ int game_init(const char* windowTitle, bool isMapper, int font, int flags, int a
         game_splash_screen();
     }
 
+#if BUILD_CHS
     FtFontsInit();
     text_add_manager(&gFtFontManager);
+#endif
 
     FMInit();
     text_add_manager(&alias_mgr);
@@ -425,7 +428,9 @@ void game_exit()
     automap_exit();
     palette_exit();
     FMExit();
+#if BUILD_CHS
     FtFontsExit();
+#endif
     windowClose();
     db_exit();
     gconfig_exit(true);

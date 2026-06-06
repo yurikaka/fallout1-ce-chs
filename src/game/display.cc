@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "game/art.h"
+#include "game/chs_config.h"
 #include "game/combat.h"
 #include "game/gmouse.h"
 #include "game/gsound.h"
@@ -23,7 +24,11 @@ namespace fallout {
 #define DISPLAY_MONITOR_LINES_CAPACITY 100
 
 // The maximum length of a string in display monitor (in characters).
-#define DISPLAY_MONITOR_LINE_LENGTH 50
+#if BUILD_CHS
+#define DISPLAY_MONITOR_LINE_LENGTH CHS_DISPLAY_MONITOR_LINE_LENGTH
+#else
+#define DISPLAY_MONITOR_LINE_LENGTH 80
+#endif
 
 #define DISPLAY_MONITOR_X 23
 #define DISPLAY_MONITOR_Y 24
@@ -215,6 +220,7 @@ void display_print(char* str)
     }
 
     // TODO: Refactor these two loops.
+#if BUILD_CHS
     char* next = NULL;
     while (true) {
         while ((text_width(str) < DISPLAY_MONITOR_WIDTH - max_disp_ptr - knobWidth) || next) {
@@ -254,11 +260,54 @@ void display_print(char* str)
         // so we rely on the next ptr to know the end of current line.
         next = str;
         int cnt = 0;
-        while (cnt < 13 && *next != '\0') {
+        while (cnt < CHS_DISPLAY_MONITOR_CHARS_PER_LINE && *next != '\0') {
             next += (*next >= '0' && *next <= '9') ? 1 : 2;
             ++cnt;
         }
     }
+#else
+    char* v1 = NULL;
+    while (true) {
+        while (text_width(str) < DISPLAY_MONITOR_WIDTH - max_disp_ptr - knobWidth) {
+            char* temp = disp_str[disp_start];
+            int length;
+            if (knob != '\0') {
+                *temp++ = knob;
+                length = DISPLAY_MONITOR_LINE_LENGTH - 2;
+                knob = '\0';
+                knobWidth = 0;
+            } else {
+                length = DISPLAY_MONITOR_LINE_LENGTH - 1;
+            }
+            strncpy(temp, str, length);
+            disp_str[disp_start][DISPLAY_MONITOR_LINE_LENGTH - 1] = '\0';
+            disp_start = (disp_start + 1) % max_ptr;
+
+            if (v1 == NULL) {
+                text_font(oldFont);
+                disp_curr = disp_start;
+                display_redraw();
+                return;
+            }
+
+            str = v1 + 1;
+            *v1 = ' ';
+            v1 = NULL;
+        }
+
+        char* space = strrchr(str, ' ');
+        if (space == NULL) {
+            break;
+        }
+
+        if (v1 != NULL) {
+            *v1 = ' ';
+        }
+
+        v1 = space;
+        *space = '\0';
+    }
+#endif
 
     char* temp = disp_str[disp_start];
     int length;
