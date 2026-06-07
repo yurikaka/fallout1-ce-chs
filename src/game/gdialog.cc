@@ -2643,8 +2643,8 @@ static int text_to_rect_func(unsigned char* buffer, Rect* rect, char* string, in
 
         // 检查是否因为maxWidth太小或字符处理问题导致temp_line_buffer为空，但字符串未结束
         if (temp_line_buffer[0] == '\0' && *start != '\0') {
-             // 这种情况可能是一个无法显示的字符，或者maxWidth为0，或者GBK判断逻辑问题
-             // 为避免死循环，至少消耗一个字符（或字节）
+            // 这种情况可能是一个无法显示的字符，或者maxWidth为0，或者GBK判断逻辑问题
+            // 为避免死循环，至少消耗一个字符（或字节）
             int min_advance = 1;
             if ((unsigned char)*start > 0x7F && *(start + 1) != '\0') {
                 min_advance = 2;
@@ -2652,20 +2652,18 @@ static int text_to_rect_func(unsigned char* buffer, Rect* rect, char* string, in
             debug_printf("\nWarning: display_msg: Line is empty, advancing %d byte(s) to avoid loop.", min_advance);
             end_of_line_in_string = start + min_advance;
             if (end_of_line_in_string > string + strlen(string)) { // 防止越过字符串末尾
-                 end_of_line_in_string = string + strlen(string);
+                end_of_line_in_string = string + strlen(string);
             }
             // 也可以选择直接将此行标记为要渲染的（如果里面有东西）
             // strncpy(temp_line_buffer, start, min_advance);
             // temp_line_buffer[min_advance] = '\0';
         }
 
-
         // 对应原版中 `if (text_width(start) > maxWidth)` 之后的 `word too long` 检查
         // 在这里，如果 temp_line_buffer 只有一个字符（或一个不可分割单位）且其宽度仍大于 maxWidth
         // text_width(temp_line_buffer) > maxWidth 的判断已经在构建循环中处理了
         // (如果第一个字符就超宽，temp_line_buffer会包含它，end_of_line_in_string会指向其后)
         // 所以，如果temp_line_buffer非空，就尝试渲染它。text_to_buf 可能需要处理裁剪。
-
 
         // 对应原版中的渲染逻辑 `if (a7 != 0)`
         if (a7 != 0) {
@@ -2675,7 +2673,7 @@ static int text_to_rect_func(unsigned char* buffer, Rect* rect, char* string, in
                     // 恢复 end 指针的操作在GBK版本中不再直接适用，因为我们不修改原string来标记换行
                     // 如果 a4 被使用，它应该反映到当前处理行的起始位置，因为这行未被成功渲染
                     if (a4 != NULL) {
-                         *a4 = (start - string); // 指向当前未能成功渲染的行的起始
+                        *a4 = (start - string); // 指向当前未能成功渲染的行的起始
                     }
                     return rect->uly; // 空间不足，返回
                 }
@@ -2706,8 +2704,8 @@ static int text_to_rect_func(unsigned char* buffer, Rect* rect, char* string, in
         // 如果可用高度已不足，则停止（即使字符串未完全处理完）
         // (此检查可以移到循环开始处或渲染前，以避免不必要的行构建)
         if (rect->uly >= rect->lry && start != NULL && *start != '\0') {
-             // a4 已经被更新为下一行的起始偏移
-             return rect->uly;
+            // a4 已经被更新为下一行的起始偏移
+            return rect->uly;
         }
 
     } // while (start != NULL && *start != '\0')
@@ -2716,10 +2714,10 @@ static int text_to_rect_func(unsigned char* buffer, Rect* rect, char* string, in
     // 如果 a4 的目的是在字符串完全处理完后归零
     if (a4 != NULL && (start == NULL || *start == '\0')) { // 整个字符串已处理完毕
         // *a4 = 0; // 如果原始逻辑是在完成后清零a4，则取消此行注释。
-                    // 否则，a4应保留为字符串的总长度（即 (start - string) 的最终值）。
-                    // 按照“尽量保留原写法”的理解，如果原版末尾有 *a4=0，这里也应该有，
-                    // 但要注意其含义可能与分段读取的期望不同。
-                    // 原版中确实有 *a4 = 0;
+        // 否则，a4应保留为字符串的总长度（即 (start - string) 的最终值）。
+        // 按照“尽量保留原写法”的理解，如果原版末尾有 *a4=0，这里也应该有，
+        // 但要注意其含义可能与分段读取的期望不同。
+        // 原版中确实有 *a4 = 0;
         *a4 = 0;
     }
 
