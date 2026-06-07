@@ -6,10 +6,10 @@ set(EXECUTABLE_NAME fallout-ce)
 
 if (APPLE)
     if(IOS)
-        set(CMAKE_OSX_DEPLOYMENT_TARGET "11" CACHE STRING "")
+        set(CMAKE_OSX_DEPLOYMENT_TARGET "12" CACHE STRING "")
         set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "")
     else()
-        set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "")
+        set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "")
         set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE STRING "")
     endif()
 endif()
@@ -263,8 +263,6 @@ target_sources(${EXECUTABLE_NAME} PUBLIC
     "src/file_find.h"
     "src/movie_lib.cc"
     "src/movie_lib.h"
-    "src/sound_decoder.cc"
-    "src/sound_decoder.h"
     "src/xfile.cc"
     "src/xfile.h"
 )
@@ -363,9 +361,11 @@ else()
     find_package(ZLIB)
 endif()
 
+add_subdirectory("third_party/adecode")
+target_link_libraries(${EXECUTABLE_NAME} adecode::adecode)
+
 add_subdirectory("third_party/fpattern")
-target_link_libraries(${EXECUTABLE_NAME} ${FPATTERN_LIBRARY})
-target_include_directories(${EXECUTABLE_NAME} PRIVATE ${FPATTERN_INCLUDE_DIR})
+target_link_libraries(${EXECUTABLE_NAME} fpattern::fpattern)
 
 target_link_libraries(${EXECUTABLE_NAME} ${SDL2_LIBRARIES})
 target_include_directories(${EXECUTABLE_NAME} PRIVATE ${SDL2_INCLUDE_DIRS})

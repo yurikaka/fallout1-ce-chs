@@ -1,7 +1,7 @@
 #ifndef FREETYPE_MANAGER_H
 #define FREETYPE_MANAGER_H
 
-//#include "text_font.h"
+// #include "text_font.h"
 #include "plib/gnw/text.h"
 
 namespace fallout {

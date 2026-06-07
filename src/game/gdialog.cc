@@ -2572,7 +2572,7 @@ static int text_to_rect_func(unsigned char* buffer, Rect* rect, char* string, in
     // and then replace it back after print the current row.
     // But in Chinese, there's no space and we can cut between any character,
     // but we cannot replace the next character with EOL since it's not space,
-    // unless we store the original character, so we copy the cut part into a 
+    // unless we store the original character, so we copy the cut part into a
     // temp string, when there's a valid temp string, we can bypass width check
     char temp[1000];
     temp[0] = '\0';
@@ -2581,7 +2581,7 @@ static int text_to_rect_func(unsigned char* buffer, Rect* rect, char* string, in
         if (temp[0] == '\0' && text_width(start) > maxWidth) {
             end = start + 2;
             int x = maxWidth / 6;
-            while (*end != '\0' && end - start < (start == string ? x-2: x)) {
+            while (*end != '\0' && end - start < (start == string ? x - 2 : x)) {
                 end++;
                 end++;
             }
@@ -2630,7 +2630,7 @@ static int text_to_rect_func(unsigned char* buffer, Rect* rect, char* string, in
             } else {
                 dest = buffer;
             }
-            text_to_buf(dest + pitch * rect->uly, (temp[0] == '\0' ? start: temp), maxWidth, pitch, color);
+            text_to_buf(dest + pitch * rect->uly, (temp[0] == '\0' ? start : temp), maxWidth, pitch, color);
             temp[0] = '\0';
         }
 
