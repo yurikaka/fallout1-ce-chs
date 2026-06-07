@@ -110,6 +110,7 @@ jobs:
             -D CMAKE_TOOLCHAIN_FILE=cmake/toolchain/ios.toolchain.cmake \
             -D ENABLE_BITCODE=0 \
             -D PLATFORM=OS64 \
+            -D CMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -G Xcode \
             -D CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY='' \
             # EOL
@@ -219,6 +220,7 @@ jobs:
         run: |
           cmake \
             -B build \
+            -D CMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -G Xcode \
             -D CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY='' \
             # EOL
