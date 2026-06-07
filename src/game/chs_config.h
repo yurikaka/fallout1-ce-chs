@@ -68,11 +68,15 @@
 
 // ─── Dialog text wrapping (gdialog.cc) ─────────────────────────────────────
 
-// Approximate average glyph width (px) used to estimate how many characters
-// fit on a dialog line: characters-per-line ≈ lineWidth / this value.
-#define CHS_DIALOG_AVG_CHAR_WIDTH (6)
-
 // Scratch buffer size, in bytes, for the current wrapped dialog line.
 #define CHS_DIALOG_LINE_BUFFER_SIZE (1000)
+
+// ─── Save/load slot layout (loadsave.cc) ───────────────────────────────────
+
+// The save/load slot list is laid out using the original English glyph height.
+// Cursor-to-slot hit-testing must therefore divide by this fixed height rather
+// than the (taller) CHS font's text_height(), otherwise clicks land on the
+// wrong slot.
+#define CHS_SAVE_SLOT_TEXT_HEIGHT (10)
 
 #endif /* CHS_CONFIG_H */

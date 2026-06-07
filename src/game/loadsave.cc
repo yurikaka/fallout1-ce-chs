@@ -523,7 +523,11 @@ int SaveGame(int mode)
                     int mouseY;
                     mouseGetPositionInWindow(lsgwin, &mouseX, &mouseY);
 
+#if BUILD_CHS
+                    slot_cursor = (mouseY - 79) / (3 * CHS_SAVE_SLOT_TEXT_HEIGHT + 4);
+#else
                     slot_cursor = (mouseY - 79) / (3 * text_height() + 4);
+#endif
                     if (slot_cursor < 0) {
                         slot_cursor = 0;
                     }
@@ -1026,7 +1030,11 @@ int LoadGame(int mode)
                     int mouseY;
                     mouseGetPositionInWindow(lsgwin, &mouseX, &mouseY);
 
+#if BUILD_CHS
+                    int clickedSlot = (mouseY - 79) / (3 * CHS_SAVE_SLOT_TEXT_HEIGHT + 4);
+#else
                     int clickedSlot = (mouseY - 79) / (3 * text_height() + 4);
+#endif
                     if (clickedSlot < 0) {
                         clickedSlot = 0;
                     } else if (clickedSlot > 9) {
