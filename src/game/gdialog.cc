@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "game/actions.h"
+#include "game/chs_config.h"
 #include "game/combat.h"
 #include "game/combatai.h"
 #include "game/critter.h"
@@ -2559,19 +2560,19 @@ static int text_to_rect_wrapped(unsigned char* buffer, Rect* rect, char* string,
 // 0x440768
 static int text_to_rect_func(unsigned char* buffer, Rect* rect, char* string, int* a4, int height, int pitch, int color, int a7)
 {
-    char* start; // 当前处理行在原始字符串中的起始指针
+    char* start;
     if (a4 != NULL) {
         start = string + *a4;
     } else {
         start = string;
     }
 
-    int maxWidth = rect->lrx - rect->ulx; // 文本区域的最大宽度
-
+    int maxWidth = rect->lrx - rect->ulx;
+#if BUILD_CHS
     // 使用一个临时缓冲区来构建当前行要显示的文本
     // 需要确保此缓冲区足够大以容纳 maxWidth 对应的最长可能字符串
     // GBK中，即使maxWidth很大，一行字符数也有限。1024字节通常足够。
-    char temp_line_buffer[1024];
+    char temp_line_buffer[CHS_DIALOG_LINE_BUFFER_SIZE];
 
     // 'end_of_line_in_string' 将指向原始字符串中当前行结束后、下一行开始的位置
     char* end_of_line_in_string = NULL;
@@ -2709,17 +2710,109 @@ static int text_to_rect_func(unsigned char* buffer, Rect* rect, char* string, in
         }
 
     } // while (start != NULL && *start != '\0')
+#else
+    char* end = NULL;
+    while (start != NULL && *start != '\0') {
+        if (text_width(start) > maxWidth) {
+            end = start + 1;
+            while (*end != '\0' && *end != ' ') {
+                end++;
+            }
 
-    // 对应原版末尾的 a4 处理
-    // 如果 a4 的目的是在字符串完全处理完后归零
-    if (a4 != NULL && (start == NULL || *start == '\0')) { // 整个字符串已处理完毕
-        // *a4 = 0; // 如果原始逻辑是在完成后清零a4，则取消此行注释。
-        // 否则，a4应保留为字符串的总长度（即 (start - string) 的最终值）。
-        // 按照“尽量保留原写法”的理解，如果原版末尾有 *a4=0，这里也应该有，
-        // 但要注意其含义可能与分段读取的期望不同。
-        // 原版中确实有 *a4 = 0;
+            if (*end != '\0') {
+                char* lookahead = end + 1;
+                while (lookahead != NULL) {
+                    while (*lookahead != '\0' && *lookahead != ' ') {
+                        lookahead++;
+                    }
+
+                    if (*lookahead == '\0') {
+                        lookahead = NULL;
+                    } else {
+                        *lookahead = '\0';
+                        if (text_width(start) >= maxWidth) {
+                            *lookahead = ' ';
+                            lookahead = NULL;
+                        } else {
+                            end = lookahead;
+                            *lookahead = ' ';
+                            lookahead++;
+                        }
+                    }
+                }
+
+                if (*end == ' ') {
+                    *end = '\0';
+                }
+            } else {
+                if (rect->lry - text_height() < rect->uly) {
+                    return rect->uly;
+                }
+
+                if (a7 != 1 || start == string) {
+                    text_to_buf(buffer + pitch * rect->uly + 10, start, maxWidth, pitch, color);
+                } else {
+                    text_to_buf(buffer + pitch * rect->uly, start, maxWidth, pitch, color);
+                }
+
+                if (a4 != NULL) {
+                    *a4 += strlen(start) + 1;
+                }
+
+                rect->uly += height;
+                return rect->uly;
+            }
+        }
+
+        if (text_width(start) > maxWidth) {
+            debug_printf("\nError: display_msg: word too long!");
+            break;
+        }
+
+        if (a7 != 0) {
+            if (rect->lry - text_height() < rect->uly) {
+                if (end != NULL && *end == '\0') {
+                    *end = ' ';
+                }
+                return rect->uly;
+            }
+
+            unsigned char* dest;
+            if (a7 != 1 || start == string) {
+                dest = buffer + 10;
+            } else {
+                dest = buffer;
+            }
+            text_to_buf(dest + pitch * rect->uly, start, maxWidth, pitch, color);
+        }
+
+        if (a4 != NULL && end != NULL) {
+            *a4 += strlen(start) + 1;
+        }
+
+        rect->uly += height;
+
+        if (end != NULL) {
+            start = end + 1;
+            if (*end == '\0') {
+                *end = ' ';
+            }
+            end = NULL;
+        } else {
+            start = NULL;
+        }
+    }
+#endif
+
+#if BUILD_CHS
+    if (a4 != NULL && (start == NULL || *start == '\0')) {
         *a4 = 0;
     }
+#else
+    if (a4 != NULL) {
+        *a4 = 0;
+    }
+#endif
 
     return rect->uly;
 }
