@@ -2559,97 +2559,165 @@ static int text_to_rect_wrapped(unsigned char* buffer, Rect* rect, char* string,
 // 0x440768
 static int text_to_rect_func(unsigned char* buffer, Rect* rect, char* string, int* a4, int height, int pitch, int color, int a7)
 {
-    char* start;
+    char* start; // 当前处理行在原始字符串中的起始指针
     if (a4 != NULL) {
         start = string + *a4;
     } else {
         start = string;
     }
 
-    int maxWidth = rect->lrx - rect->ulx;
-    // In the original code, we look for a space ' ' between words,
-    // and we cut the string by replacing the space with EOL,
-    // and then replace it back after print the current row.
-    // But in Chinese, there's no space and we can cut between any character,
-    // but we cannot replace the next character with EOL since it's not space,
-    // unless we store the original character, so we copy the cut part into a
-    // temp string, when there's a valid temp string, we can bypass width check
-    char temp[1000];
-    temp[0] = '\0';
-    char* end = NULL;
+    int maxWidth = rect->lrx - rect->ulx; // 文本区域的最大宽度
+
+    // 使用一个临时缓冲区来构建当前行要显示的文本
+    // 需要确保此缓冲区足够大以容纳 maxWidth 对应的最长可能字符串
+    // GBK中，即使maxWidth很大，一行字符数也有限。1024字节通常足够。
+    char temp_line_buffer[1024];
+
+    // 'end_of_line_in_string' 将指向原始字符串中当前行结束后、下一行开始的位置
+    char* end_of_line_in_string = NULL;
+
     while (start != NULL && *start != '\0') {
-        if (temp[0] == '\0' && text_width(start) > maxWidth) {
-            end = start + 2;
-            int x = maxWidth / 6;
-            while (*end != '\0' && end - start < (start == string ? x - 2 : x)) {
-                end++;
-                end++;
-            }
+        temp_line_buffer[0] = '\0'; // 清空临时行缓冲区
+        end_of_line_in_string = start; // 默认下一行从当前字符开始（如果当前字符是第一个无法容纳的）
 
-            if (*end != '\0') {
-                strncpy(temp, start, end - start);
-                temp[end - start] = '\0';
-            } else {
-                // should not reach here for Chinese, since we can cut at any position
-                // there should always be a valid(not EOL) end position
-                if (rect->lry - text_height() < rect->uly) {
-                    return rect->uly;
-                }
+        // 检查从'start'开始的整个剩余字符串的渲染宽度
+        // 注意: text_width(start) 计算的是到'\0'的整个字符串宽度，可能非常大
+        // 我们需要逐字构建行并判断宽度
 
-                if (a7 != 1 || start == string) {
-                    text_to_buf(buffer + pitch * rect->uly + 10, start, maxWidth, pitch, color);
+        // --- 开始构建当前行到 temp_line_buffer ---
+        char* scan_ptr = start; // 用于扫描原始字符串以构建当前行的指针
+        int current_temp_len = 0; // temp_line_buffer 中已填充的字节数
+
+        while (*scan_ptr != '\0') {
+            int char_len_gbk = 1; // 当前GBK字符的字节长度 (1或2)
+            // 判断GBK字符长度：首字节 > 0x7F (127) 则为双字节字符的开始
+            if ((unsigned char)*scan_ptr > 0x7F) { // 检查是否为双字节字符的第一个字节
+                if (*(scan_ptr + 1) != '\0') { // 必须确保有第二个字节存在
+                    char_len_gbk = 2;
                 } else {
-                    text_to_buf(buffer + pitch * rect->uly, start, maxWidth, pitch, color);
+                    // 字符串末尾出现不完整的双字节字符，作为单字节处理或错误
+                    // 这里我们当作单字节，让text_width去判断，或者可以报错
+                    // char_len_gbk = 1; // 保持为1，避免越界
                 }
-
-                if (a4 != NULL) {
-                    *a4 += strlen(start) + 1;
-                }
-
-                rect->uly += height;
-                return rect->uly;
             }
+
+            // 检查如果添加这个字符后，temp_line_buffer是否会溢出
+            if (current_temp_len + char_len_gbk >= sizeof(temp_line_buffer)) {
+                // 临时缓冲区不足，这通常不应该发生，除非maxWidth非常大或单个字符编码异常
+                // 此时 temp_line_buffer 中是已能容纳的部分，scan_ptr 指向未能加入的字符
+                end_of_line_in_string = scan_ptr;
+                break; // 结束当前行构建
+            }
+
+            // 将当前GBK字符复制到 temp_line_buffer 的末尾
+            strncpy(temp_line_buffer + current_temp_len, scan_ptr, char_len_gbk);
+            // 为 temp_line_buffer 添加结尾的 '\0'，以便 text_width 计算宽度
+            temp_line_buffer[current_temp_len + char_len_gbk] = '\0';
+
+            // 计算添加新字符后的总宽度
+            if (text_width(temp_line_buffer) > maxWidth) {
+                // 添加此字符后超出了最大宽度
+                if (current_temp_len == 0) {
+                    // 第一个字符（或其一部分）就超出了宽度
+                    // temp_line_buffer 中已包含这个超宽的字符。
+                    // 下一行应从这个超宽字符之后开始
+                    end_of_line_in_string = scan_ptr + char_len_gbk;
+                } else {
+                    // 不是第一个字符，说明之前的内容是适合的。
+                    // 从 temp_line_buffer 中移除最后添加的这个字符。
+                    temp_line_buffer[current_temp_len] = '\0';
+                    // 下一行应从当前这个无法容纳的字符 (scan_ptr) 开始
+                    end_of_line_in_string = scan_ptr;
+                }
+                break; // 当前行构建完成
+            }
+
+            // 当前字符可以容纳，更新 temp_line_buffer 的长度和扫描指针
+            current_temp_len += char_len_gbk;
+            scan_ptr += char_len_gbk;
+            end_of_line_in_string = scan_ptr; // 假设行在这里结束，下一行从这里开始
+        }
+        // --- 当前行构建结束 ---
+        // 此时, temp_line_buffer 包含要渲染的行文本 (可能为空)
+        // end_of_line_in_string 指向原始字符串中下一行的起始位置
+
+        // 检查是否因为maxWidth太小或字符处理问题导致temp_line_buffer为空，但字符串未结束
+        if (temp_line_buffer[0] == '\0' && *start != '\0') {
+            // 这种情况可能是一个无法显示的字符，或者maxWidth为0，或者GBK判断逻辑问题
+            // 为避免死循环，至少消耗一个字符（或字节）
+            int min_advance = 1;
+            if ((unsigned char)*start > 0x7F && *(start + 1) != '\0') {
+                min_advance = 2;
+            }
+            debug_printf("\nWarning: display_msg: Line is empty, advancing %d byte(s) to avoid loop.", min_advance);
+            end_of_line_in_string = start + min_advance;
+            if (end_of_line_in_string > string + strlen(string)) { // 防止越过字符串末尾
+                end_of_line_in_string = string + strlen(string);
+            }
+            // 也可以选择直接将此行标记为要渲染的（如果里面有东西）
+            // strncpy(temp_line_buffer, start, min_advance);
+            // temp_line_buffer[min_advance] = '\0';
         }
 
-        if (temp[0] == '\0' && text_width(start) > maxWidth) {
-            debug_printf("\nError: display_msg: word too long!");
-            break;
-        }
+        // 对应原版中 `if (text_width(start) > maxWidth)` 之后的 `word too long` 检查
+        // 在这里，如果 temp_line_buffer 只有一个字符（或一个不可分割单位）且其宽度仍大于 maxWidth
+        // text_width(temp_line_buffer) > maxWidth 的判断已经在构建循环中处理了
+        // (如果第一个字符就超宽，temp_line_buffer会包含它，end_of_line_in_string会指向其后)
+        // 所以，如果temp_line_buffer非空，就尝试渲染它。text_to_buf 可能需要处理裁剪。
 
+        // 对应原版中的渲染逻辑 `if (a7 != 0)`
         if (a7 != 0) {
-            if (rect->lry - text_height() < rect->uly) {
-                if (end != NULL && *end == '\0') {
-                    *end = ' ';
+            if (temp_line_buffer[0] != '\0') { // 只有当临时行有内容时才绘制
+                // 检查垂直方向是否还有空间
+                if (rect->lry - text_height() < rect->uly) {
+                    // 恢复 end 指针的操作在GBK版本中不再直接适用，因为我们不修改原string来标记换行
+                    // 如果 a4 被使用，它应该反映到当前处理行的起始位置，因为这行未被成功渲染
+                    if (a4 != NULL) {
+                        *a4 = (start - string); // 指向当前未能成功渲染的行的起始
+                    }
+                    return rect->uly; // 空间不足，返回
                 }
-                return rect->uly;
+
+                unsigned char* dest;
+                if (a7 != 1 || start == string) { // 此处的 start 是当前行在原始字符串中的开始
+                    dest = buffer + 10;
+                } else {
+                    dest = buffer;
+                }
+                text_to_buf(dest + pitch * rect->uly, temp_line_buffer, maxWidth, pitch, color);
             }
-
-            unsigned char* dest;
-            if (a7 != 1 || start == string) {
-                dest = buffer + 10;
-            } else {
-                dest = buffer;
-            }
-            text_to_buf(dest + pitch * rect->uly, (temp[0] == '\0' ? start : temp), maxWidth, pitch, color);
-            temp[0] = '\0';
         }
 
-        if (a4 != NULL && end != NULL) {
-            *a4 += strlen(start) + 1;
+        // 对应原版中的 `if (a4 != NULL && end != NULL)`
+        // 在这里，end 的概念由 end_of_line_in_string 替代
+        if (a4 != NULL) {
+            // *a4 应该更新为下一行文本在原始 string 中的起始字节偏移
+            *a4 = (end_of_line_in_string - string);
         }
 
-        rect->uly += height;
+        rect->uly += height; // Y 坐标下移一行
 
-        if (end != NULL) {
-            // no space or EOL to skip in Chinese
-            start = end;
-            end = NULL;
-        } else {
-            start = NULL;
+        // 对应原版中 `if (end != NULL)` 的前进逻辑
+        start = end_of_line_in_string; // 更新 start 为下一行的起始位置
+        // 循环条件 `*start != '\0'` 会处理字符串结束的情况
+
+        // 如果可用高度已不足，则停止（即使字符串未完全处理完）
+        // (此检查可以移到循环开始处或渲染前，以避免不必要的行构建)
+        if (rect->uly >= rect->lry && start != NULL && *start != '\0') {
+            // a4 已经被更新为下一行的起始偏移
+            return rect->uly;
         }
-    }
 
-    if (a4 != NULL) {
+    } // while (start != NULL && *start != '\0')
+
+    // 对应原版末尾的 a4 处理
+    // 如果 a4 的目的是在字符串完全处理完后归零
+    if (a4 != NULL && (start == NULL || *start == '\0')) { // 整个字符串已处理完毕
+        // *a4 = 0; // 如果原始逻辑是在完成后清零a4，则取消此行注释。
+        // 否则，a4应保留为字符串的总长度（即 (start - string) 的最终值）。
+        // 按照“尽量保留原写法”的理解，如果原版末尾有 *a4=0，这里也应该有，
+        // 但要注意其含义可能与分段读取的期望不同。
+        // 原版中确实有 *a4 = 0;
         *a4 = 0;
     }
 

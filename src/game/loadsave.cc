@@ -522,7 +522,7 @@ int SaveGame(int mode)
                     int mouseY;
                     mouseGetPositionInWindow(lsgwin, &mouseX, &mouseY);
 
-                    slot_cursor = (mouseY - 79) / (3 * text_height() + 4);
+                    slot_cursor = (mouseY - 79) / (3 * 10 + 4);
                     if (slot_cursor < 0) {
                         slot_cursor = 0;
                     }
@@ -1025,7 +1025,7 @@ int LoadGame(int mode)
                     int mouseY;
                     mouseGetPositionInWindow(lsgwin, &mouseX, &mouseY);
 
-                    int clickedSlot = (mouseY - 79) / (3 * text_height() + 4);
+                    int clickedSlot = (mouseY - 79) / (3 * 10 + 4);
                     if (clickedSlot < 0) {
                         clickedSlot = 0;
                     } else if (clickedSlot > 9) {
